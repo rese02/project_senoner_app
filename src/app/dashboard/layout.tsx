@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Logo } from '@/components/logo';
 import { logout } from '@/lib/actions/auth';
 import { cn } from '@/lib/utils';
@@ -60,6 +60,9 @@ function MobileNav({ children }: { children: React.ReactNode }) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="flex flex-col">
+        <SheetHeader>
+          <SheetTitle className="sr-only">Customer Menu</SheetTitle>
+        </SheetHeader>
         <nav className="grid gap-2 text-lg font-medium">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-4">
             <Logo className="h-6 w-6 text-primary" />
