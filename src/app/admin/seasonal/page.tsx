@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useTransition } from 'react';
-import { suggestSeasonalPromotions } from '@/ai/flows/suggest-seasonal-promotions';
+import { suggestSeasonalPromotions } from '@/lib/actions/seasonal';
 import type { SuggestSeasonalPromotionsOutput } from '@/ai/flows/suggest-seasonal-promotions';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,13 +26,12 @@ const initialState: {
 };
 
 export default function SeasonalPage() {
-  const [state, formAction] = useActionState(suggestSeasonalPromotions, initialState);
-  const [isPending, startTransition] = useTransition();
+  const [state, formAction, isPending] = useActionState(suggestSeasonalPromotions, initialState);
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       <div className="lg:col-span-2">
-        <form action={(formData) => startTransition(() => formAction(formData))}>
+        <form action={formAction}>
           <Card>
             <CardHeader>
               <CardTitle>Seasonal Promotion Generator</CardTitle>
