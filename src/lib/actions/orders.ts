@@ -1,16 +1,17 @@
 'use server';
 
 import { verifySession } from '@/lib/auth';
-import { orders, users } from '@/lib/data';
-import type { Order } from '@/lib/types';
+import type { Order, User } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { addDocumentNonBlocking, firestore } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 
 export async function placeOrder(
   prevState: { message: string },
   formData: FormData
 ): Promise<{ message: string }> {
   const session = await verifySession();
-  if (!session) {
+  if (!session || !session.user) {
     return { message: 'Not authenticated' };
   }
 
@@ -22,23 +23,21 @@ export async function placeOrder(
     return { message: 'Missing required fields' };
   }
 
-  const customer = users.find(u => u.id === session.userId);
-  if (!customer) {
-      return { message: 'Customer not found' };
-  }
+  const customer = session.user as User;
 
-  const newOrder: Order = {
-    id: `order-${Date.now()}`,
+  const newOrder = {
     customerId: session.userId,
     customerName: customer.name,
     product,
     details,
     date: pickupDate,
     status: 'pending',
+    createdAt: serverTimestamp(),
   };
 
-  orders.unshift(newOrder);
+  const ordersCollection = collection(firestore, `users/${session.userId}/preorders`);
+  await addDocumentNonBlocking(ordersCollection, newOrder);
 
-  revalidatePath('/dashboard/pre-order');
+  revalidatePath('/dashboard');
   return { message: 'success' };
 }

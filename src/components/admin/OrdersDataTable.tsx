@@ -43,21 +43,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
-export function OrdersDataTable({ data, onOrdersChange }: { data: Order[], onOrdersChange: (orders: Order[]) => void }) {
+export function OrdersDataTable({ data }: { data: Order[] }) {
+  const firestore = useFirestore();
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
 
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
-    const updatedOrders = data.map((order) =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    onOrdersChange(updatedOrders);
+    if (!firestore) return;
+    const orderRef = doc(firestore, `preorders`, orderId);
+    setDocumentNonBlocking(orderRef, { status: newStatus }, { merge: true });
   };
 
   const handleDeleteOrder = (orderId: string) => {
-    const updatedOrders = data.filter((order) => order.id !== orderId);
-    onOrdersChange(updatedOrders);
+    if (!firestore) return;
+    const orderRef = doc(firestore, `preorders`, orderId);
+    deleteDocumentNonBlocking(orderRef);
     setDeletingOrder(null);
   };
 

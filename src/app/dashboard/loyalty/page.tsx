@@ -1,5 +1,5 @@
+'use client';
 import Image from "next/image";
-import { verifySession } from "@/lib/auth";
 import {
   Card,
   CardContent,
@@ -9,12 +9,24 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Award, Star } from "lucide-react";
+import { useDoc, useFirestore, useUser, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { User } from "@/lib/types";
 
-export default async function CustomerDashboardPage() {
-  const session = await verifySession();
-  const user = session?.user;
+export default function CustomerDashboardPage() {
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
 
-  if (!user) return null;
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: user, isLoading } = useDoc<User>(userRef);
+
+  if (isLoading || !user) {
+    return <div>Loading...</div>; // Or a skeleton loader
+  }
 
   const pointsToNextReward = 10 - (user.points % 10);
   const progressPercentage = (user.points % 10) * 10;
@@ -73,7 +85,7 @@ export default async function CustomerDashboardPage() {
                 <CardDescription>Rewards you have earned.</CardDescription>
             </CardHeader>
             <CardContent>
-                {user.rewards.length > 0 ? (
+                {user.rewards && user.rewards.length > 0 ? (
                     <ul className="space-y-4">
                         {user.rewards.map(reward => (
                             <li key={reward.id} className="flex justify-between items-center">

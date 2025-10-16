@@ -1,32 +1,39 @@
 'use client';
-import { User, UserRole } from './types';
+import { UserRole } from './types';
 import { redirect } from 'next/navigation';
-import { users } from './data';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { initializeFirebase } from '@/firebase';
 
-async function getSession() {
-  const cookie = document.cookie
-    .split('; ')
-    .find(row => row.startsWith('session='));
-  if (!cookie) return null;
+// Initialize Firebase on the client
+const { auth } = initializeFirebase();
 
-  const session = cookie.split('=')[1];
-  try {
-    const payload = JSON.parse(atob(session.split('.')[1]));
-    if (payload.exp * 1000 < Date.now()) {
-      return null;
-    }
-    
-    const user = users.find(u => u.id === payload.userId);
-
-    if (!user || user.role !== payload.role) {
-        return null;
-    }
-
-    return { userId: payload.userId as string, role: payload.role as UserRole, user };
-
-  } catch (e) {
-    return null;
-  }
+async function getSession(): Promise<{ userId: string; role: UserRole; user: User } | null> {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe();
+      if (user) {
+        const tokenResult = await user.getIdTokenResult();
+        const role = (tokenResult.claims.role as UserRole) || 'customer';
+        resolve({
+          userId: user.uid,
+          role,
+          user: {
+            // This is a partial user object, fill as needed from auth or firestore
+            id: user.uid,
+            name: user.displayName || 'No Name',
+            email: user.email || 'no-email@example.com',
+            role: role,
+            points: 0, // Points and rewards should be fetched from Firestore
+            rewards: []
+          },
+        });
+      } else {
+        resolve(null);
+      }
+    }, () => {
+      resolve(null); // Handle error case
+    });
+  });
 }
 
 export async function verifySession() {

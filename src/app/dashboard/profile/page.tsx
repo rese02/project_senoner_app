@@ -14,9 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateUserProfile } from '@/lib/actions/users';
 import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
-import { verifySession } from '@/lib/auth-client';
-import { users } from '@/lib/data';
+
 
 const initialState = {
   message: '',
@@ -25,17 +26,15 @@ const initialState = {
 export default function ProfilePage() {
   const { toast } = useToast();
   const [state, formAction] = useActionState(updateUserProfile, initialState);
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    async function getSession() {
-        const session = await verifySession();
-        if (session?.user) {
-            setUser(session.user);
-        }
-    }
-    getSession();
-  }, []);
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: user, isLoading } = useDoc<User>(userRef);
 
   useEffect(() => {
     if (state.message === 'success') {
@@ -43,10 +42,6 @@ export default function ProfilePage() {
         title: 'Profile Updated',
         description: 'Your profile has been successfully updated.',
       });
-      if(user?.id) {
-        const updatedUser = users.find(u => u.id === user.id);
-        if (updatedUser) setUser(updatedUser);
-      }
     } else if (state.message) {
       toast({
         variant: 'destructive',
@@ -54,9 +49,9 @@ export default function ProfilePage() {
         description: state.message,
       });
     }
-  }, [state, toast, user?.id]);
+  }, [state, toast]);
 
-  if (!user) return null;
+  if (isLoading || !user) return <p>Loading...</p>;
 
   return (
     <div className="flex justify-center">

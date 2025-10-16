@@ -1,3 +1,5 @@
+import { FieldValue } from "firebase-admin/firestore";
+
 export type UserRole = 'customer' | 'admin' | 'employee';
 
 export type User = {
@@ -7,6 +9,7 @@ export type User = {
   role: UserRole;
   points: number;
   rewards: { id: string; name: string; date: string }[];
+  registrationDate?: FieldValue | Date;
 };
 
 export type Order = {

@@ -1,5 +1,9 @@
 import type { User, Order, Activity, Category } from './types';
 
+// This file is now deprecated for holding user, order, and category data.
+// This data is now stored and retrieved from Firestore.
+// The mock data is kept here for reference or potential testing purposes.
+
 export const users: User[] = [
   {
     id: 'user-1',

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { categories as initialCategories } from '@/lib/data';
 import type { Category, Product, OrderOption } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,52 +37,71 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc, query, orderBy } from 'firebase/firestore';
 
 export default function AdminProductsPage() {
-    const [categories, setCategories] = useState<Category[]>(initialCategories);
+    const firestore = useFirestore();
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-    const [editingProduct, setEditingProduct] = useState<{product: Product, categoryId: string} | null>(null);
+    const [editingProduct, setEditingProduct] = useState<{product: Partial<Product>, categoryId: string} | null>(null);
 
-    // Category Handlers
-    const handleSaveCategory = (categoryData: Category) => {
-        if (editingCategory && editingCategory.id) {
-            setCategories(categories.map(c => c.id === categoryData.id ? categoryData : c));
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'categories'), orderBy('name'));
+    }, [firestore]);
+
+    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
+
+    const handleSaveCategory = (categoryData: Partial<Category>) => {
+        if (!firestore) return;
+        if (categoryData.id) {
+            const categoryRef = doc(firestore, 'categories', categoryData.id);
+            setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
         } else {
-            setCategories([...categories, { ...categoryData, id: `cat-${Date.now()}` }]);
+            const categoriesCollection = collection(firestore, 'categories');
+            addDocumentNonBlocking(categoriesCollection, categoryData);
         }
         setEditingCategory(null);
     };
 
     const handleDeleteCategory = (categoryId: string) => {
-        setCategories(categories.filter(c => c.id !== categoryId));
+        if (!firestore) return;
+        const categoryRef = doc(firestore, 'categories', categoryId);
+        deleteDocumentNonBlocking(categoryRef);
     };
 
-    // Product Handlers
-    const handleSaveProduct = (productData: Product, categoryId: string) => {
+    const handleSaveProduct = (productData: Partial<Product>, categoryId: string) => {
+        if (!firestore || !categories) return;
+
         const targetCategory = categories.find(c => c.id === categoryId);
         if (!targetCategory) return;
+        
+        let updatedProducts: Partial<Product>[];
 
-        if (editingProduct && editingProduct.product.id) {
-            const updatedProducts = targetCategory.products.map(p => p.id === productData.id ? productData : p);
-            const updatedCategory = { ...targetCategory, products: updatedProducts };
-            setCategories(categories.map(c => c.id === categoryId ? updatedCategory : c));
+        if (productData.id) {
+            updatedProducts = targetCategory.products.map(p => p.id === productData.id ? productData : p);
         } else {
-            const newProduct = { ...productData, id: `prod-${Date.now()}`, categoryId: categoryId };
-            const updatedProducts = [...targetCategory.products, newProduct];
-            const updatedCategory = { ...targetCategory, products: updatedProducts };
-            setCategories(categories.map(c => c.id === categoryId ? updatedCategory : c));
+            const newProduct = { ...productData, id: `prod-${Date.now()}` };
+            updatedProducts = [...(targetCategory.products || []), newProduct];
         }
+        
+        const categoryRef = doc(firestore, 'categories', categoryId);
+        setDocumentNonBlocking(categoryRef, { products: updatedProducts }, { merge: true });
+
         setEditingProduct(null);
     };
 
     const handleDeleteProduct = (productId: string, categoryId: string) => {
+        if (!firestore || !categories) return;
         const targetCategory = categories.find(c => c.id === categoryId);
         if (!targetCategory) return;
 
         const updatedProducts = targetCategory.products.filter(p => p.id !== productId);
-        const updatedCategory = { ...targetCategory, products: updatedProducts };
-        setCategories(categories.map(c => c.id === categoryId ? updatedCategory : c));
+        const categoryRef = doc(firestore, 'categories', categoryId);
+        setDocumentNonBlocking(categoryRef, { products: updatedProducts }, { merge: true });
     };
+
+    if (categoriesLoading) return <p>Loading...</p>;
 
     return (
         <div className="space-y-6">
@@ -107,7 +125,7 @@ export default function AdminProductsPage() {
                 </Dialog>
             </div>
             
-            {categories.map(category => (
+            {categories?.map(category => (
                 <Card key={category.id} className="shadow-md">
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="flex items-center gap-4">
@@ -163,7 +181,7 @@ export default function AdminProductsPage() {
                     <CardContent className="space-y-4">
                         <h4 className="font-semibold text-md">Products in this Category</h4>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {category.products.map(product => (
+                            {category.products?.map(product => (
                                 <Card key={product.id} className="flex flex-col">
                                     <CardHeader className="p-4">
                                          <div className="aspect-[4/3] rounded-md overflow-hidden mb-2">
@@ -225,7 +243,7 @@ export default function AdminProductsPage() {
                             ))}
                              <Dialog onOpenChange={(isOpen) => !isOpen && setEditingProduct(null)}>
                                 <DialogTrigger asChild>
-                                     <Button variant="outline" className="h-full border-dashed flex-col gap-2 min-h-[200px]" onClick={() => setEditingProduct({product: {id: '', name: '', image: '', imageHint: '', categoryId: category.id, orderOptions: []}, categoryId: category.id})}>
+                                     <Button variant="outline" className="h-full border-dashed flex-col gap-2 min-h-[200px]" onClick={() => setEditingProduct({product: { name: '', image: '', imageHint: '', categoryId: category.id, orderOptions: []}, categoryId: category.id})}>
                                         <PlusCircle className="h-6 w-6" />
                                         <span>Add Product</span>
                                     </Button>
@@ -245,22 +263,22 @@ export default function AdminProductsPage() {
     );
 }
 
-function CategoryFormDialog({ category, onSave, onClose }: { category: Category | null, onSave: (category: Category) => void, onClose: () => void }) {
+function CategoryFormDialog({ category, onSave, onClose }: { category: Partial<Category> | null, onSave: (category: Partial<Category>) => void, onClose: () => void }) {
     const [name, setName] = useState('');
     const [pickupDays, setPickupDays] = useState<string[]>([]);
     const [image, setImage] = useState('');
 
     useEffect(() => {
         if (category) {
-            setName(category.name);
-            setPickupDays(category.pickupDays);
+            setName(category.name || '');
+            setPickupDays(category.pickupDays || []);
             setImage(category.image || `https://picsum.photos/seed/${Date.now()}/600/400`);
         }
     }, [category]);
 
     const handleSubmit = () => {
         if (name && category) {
-            onSave({ ...category, name, pickupDays, image });
+            onSave({ ...category, name, pickupDays, image, imageHint: 'category image' });
             onClose();
         }
     };
@@ -314,16 +332,16 @@ function CategoryFormDialog({ category, onSave, onClose }: { category: Category 
     );
 }
 
-function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?: Product, categoryId: string, onSave: (product: Product, categoryId: string) => void, onClose: () => void }) {
+function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?: Partial<Product>, categoryId: string, onSave: (product: Partial<Product>, categoryId: string) => void, onClose: () => void }) {
     const [name, setName] = useState('');
     const [image, setImage] = useState('');
     const [options, setOptions] = useState<OrderOption[]>([]);
     
     useEffect(() => {
         if (product) {
-            setName(product.name);
+            setName(product.name || '');
             setImage(product.image || `https://picsum.photos/seed/${Date.now()}/400/300`);
-            setOptions(product.orderOptions);
+            setOptions(product.orderOptions || []);
         }
     }, [product]);
 
@@ -343,7 +361,7 @@ function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?:
 
     const handleSubmit = () => {
         if (name && product) {
-            onSave({ ...product, name, image, orderOptions: options }, categoryId);
+            onSave({ ...product, name, image, imageHint: 'product image', orderOptions: options }, categoryId);
             onClose();
         }
     };

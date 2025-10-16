@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -23,9 +22,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Logo } from '@/components/logo';
 import { logout } from '@/lib/actions/auth';
 import { cn } from '@/lib/utils';
-import type { User } from '@/lib/types';
+import { useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { verifySession } from '@/lib/auth-client';
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -93,15 +91,7 @@ const navItems = (
 );
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    verifySession().then((session) => {
-      if (session?.user) {
-        setUser(session.user);
-      }
-    });
-  }, []);
+  const { user } = useUser();
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -132,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.displayName}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/profile">Profile</Link>

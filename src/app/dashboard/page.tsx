@@ -29,12 +29,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { orders as initialOrders, categories } from '@/lib/data';
 import { placeOrder } from '@/lib/actions/orders';
 import { useToast } from '@/hooks/use-toast';
-import type { Order, Product } from '@/lib/types';
-import { verifySession } from '@/lib/auth-client';
+import type { Order, Product, Category } from '@/lib/types';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { ShoppingCart, X } from 'lucide-react';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 const initialState = {
   message: '',
@@ -49,35 +49,31 @@ type CartItem = {
 export default function PreOrderPage() {
   const { toast } = useToast();
   const [state, formAction] = useActionState(placeOrder, initialState);
-  const [userOrders, setUserOrders] = useState<Order[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickupDate, setPickupDate] = useState('');
 
-  useEffect(() => {
-    async function getSession() {
-      const session = await verifySession();
-      if (session?.userId) {
-        setUserId(session.userId);
-        const filteredOrders = initialOrders.filter(o => o.customerId === session.userId);
-        setUserOrders(filteredOrders);
-      }
-    }
-    getSession();
-  }, []);
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'categories'), orderBy('name'));
+  }, [firestore]);
+  const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
 
+  const userOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, `users/${user.uid}/preorders`), orderBy('createdAt', 'desc'));
+  }, [firestore, user]);
+  const { data: userOrders, isLoading: ordersLoading } = useCollection<Order>(userOrdersQuery);
+  
   useEffect(() => {
     if (state.message === 'success') {
       toast({
         title: 'Order Placed!',
         description: 'Your pre-order has been successfully submitted.',
       });
-      if (userId) {
-        // This part is tricky with mock data; in a real app, you'd refetch.
-        // For now, we just show what's in the initial data.
-        setUserOrders(initialOrders.filter(o => o.customerId === userId));
-      }
       setCart([]); // Clear cart on successful order
+      setPickupDate('');
     } else if (state.message) {
       toast({
         variant: 'destructive',
@@ -85,7 +81,7 @@ export default function PreOrderPage() {
         description: state.message,
       });
     }
-  }, [state, toast, userId]);
+  }, [state, toast]);
   
   const handleAddToCart = (product: Product, option: string, quantity: number) => {
     if (quantity > 0) {
@@ -122,9 +118,12 @@ export default function PreOrderPage() {
     const orderDetails = cart.map(item => `${item.quantity}x ${item.product.name} (${item.option})`).join(', ');
     formData.set('details', orderDetails);
     formData.set('pickup-date', pickupDate);
-    // For simplicity, we'll just use the category name for the 'product' field
-    formData.set('product', categories.find(c => c.id === cart[0].product.categoryId)?.name || 'Mixed Order');
-
+    
+    if (categories) {
+        const categoryName = categories.find(c => c.id === cart[0].product.categoryId)?.name || 'Mixed Order';
+        formData.set('product', categoryName);
+    }
+    
     formAction(formData);
   };
 
@@ -148,8 +147,11 @@ export default function PreOrderPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {categoriesLoading ? (
+              <p>Loading categories...</p>
+            ) : (
             <Accordion type="single" collapsible className="w-full">
-              {categories.map(category => (
+              {categories?.map(category => (
                 <AccordionItem value={category.id} key={category.id}>
                   <AccordionTrigger>
                     <div className="flex items-center gap-4">
@@ -162,7 +164,7 @@ export default function PreOrderPage() {
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="grid gap-4 pt-4 md:grid-cols-2">
-                      {category.products.map(product => {
+                      {category.products?.map(product => {
                         const [selectedOption, setSelectedOption] = useState(product.orderOptions[0].label);
                         const [quantity, setQuantity] = useState(1);
                         return (
@@ -203,6 +205,7 @@ export default function PreOrderPage() {
                 </AccordionItem>
               ))}
             </Accordion>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -248,6 +251,7 @@ export default function PreOrderPage() {
             <CardDescription>Track your past and current pre-orders.</CardDescription>
           </CardHeader>
           <CardContent>
+            {ordersLoading ? <p>Loading orders...</p> : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -257,7 +261,7 @@ export default function PreOrderPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {userOrders.map((order) => (
+                {userOrders?.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>{order.date}</TableCell>
                     <TableCell className="hidden sm:table-cell">{order.product}</TableCell>
@@ -270,7 +274,8 @@ export default function PreOrderPage() {
                 ))}
               </TableBody>
             </Table>
-            {userOrders.length === 0 && (
+            )}
+            {!ordersLoading && userOrders?.length === 0 && (
               <p className="text-center text-muted-foreground pt-4">You have no pre-orders.</p>
             )}
           </CardContent>

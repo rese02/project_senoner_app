@@ -3,7 +3,19 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
 import type { SessionPayload, UserRole } from '@/lib/types';
-import { users } from '@/lib/data';
+import { auth } from 'firebase-admin';
+import { initFirebaseAdminApp } from '@/firebase/admin';
+
+initFirebaseAdminApp();
+
+export function getFirebaseAuth() {
+  return auth();
+}
+
+export function getAnonymousUser() {
+    return getFirebaseAuth().createUser({});
+}
+
 
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
     throw new Error('The SESSION_SECRET environment variable must be set and be at least 32 characters long.');
@@ -52,10 +64,11 @@ export async function verifySession() {
     return null;
   }
 
-  const user = users.find(u => u.id === session.userId);
-  if (!user || user.role !== session.role) {
+  const userDoc = await getFirebaseAuth().getUser(session.userId);
+  if (!userDoc) {
     return null;
   }
+  const user = { ...userDoc, id: userDoc.uid, role: session.role };
 
   return { userId: session.userId, role: session.role as UserRole, user };
 }

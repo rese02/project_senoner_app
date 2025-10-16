@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { orders as initialOrders } from "@/lib/data";
 import { OrdersDataTable } from "@/components/admin/OrdersDataTable";
 import type { Order } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,26 +31,40 @@ import {
 } from "@/components/ui/alert-dialog";
 import { subDays, subMonths, isAfter, startOfDay } from "date-fns";
 import { Trash2 } from "lucide-react";
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, query, where, getDocs, doc } from "firebase/firestore";
 
 type TimePeriod = "all" | "today" | "yesterday" | "last7days" | "last30days" | "last6months";
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const firestore = useFirestore();
   const [filterPeriod, setFilterPeriod] = useState<TimePeriod>("all");
+  
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'preorders'); // Assuming a top-level 'preorders' collection
+  }, [firestore]);
+  
+  const { data: orders, isLoading } = useCollection<Order>(ordersQuery);
 
-  const handleDeletePeriod = () => {
+  const handleDeletePeriod = async () => {
+    if (!firestore || !orders) return;
+    
     if (filterPeriod === "all") {
-      setOrders([]);
-      return;
+        const batch = [];
+        for (const order of orders) {
+            batch.push(deleteDocumentNonBlocking(doc(firestore, `preorders`, order.id)));
+        }
+        await Promise.all(batch);
+        return;
     }
 
     const now = new Date();
-    const startOfToday = startOfDay(now);
     let startDate: Date;
 
     switch (filterPeriod) {
       case "today":
-        startDate = startOfToday;
+        startDate = startOfDay(now);
         break;
       case "yesterday":
         startDate = startOfDay(subDays(now, 1));
@@ -66,22 +79,27 @@ export default function AdminOrdersPage() {
         startDate = startOfDay(subMonths(now, 6));
         break;
       default:
-        startDate = new Date(0); // Epoch, basically all time
+        return;
     }
+
+    const endDate = filterPeriod === 'yesterday' ? startOfDay(now) : undefined;
     
-    if (filterPeriod === 'yesterday') {
-         setOrders(orders.filter(order => {
-            const orderDate = startOfDay(new Date(order.date));
-            return orderDate.getTime() !== startDate.getTime();
-         }));
-    } else {
-        setOrders(orders.filter(order => !isAfter(new Date(order.date), startDate) && new Date(order.date).getTime() !== startDate.getTime()));
+    const ordersToDelete = orders.filter(order => {
+        const orderDate = new Date(order.date);
+        if (endDate) {
+            return isAfter(orderDate, startDate) && orderDate < endDate;
+        }
+        return isAfter(orderDate, startDate);
+    });
+
+    const batch = [];
+    for (const order of ordersToDelete) {
+        batch.push(deleteDocumentNonBlocking(doc(firestore, 'preorders', order.id)));
     }
+    await Promise.all(batch);
   };
   
-  const handleOrdersChange = (updatedOrders: Order[]) => {
-    setOrders(updatedOrders);
-  };
+  if(isLoading) return <p>Loading orders...</p>
 
   return (
     <Card>
@@ -126,7 +144,7 @@ export default function AdminOrdersPage() {
         </div>
       </CardHeader>
       <CardContent>
-        <OrdersDataTable data={orders} onOrdersChange={handleOrdersChange} />
+        <OrdersDataTable data={orders || []} />
       </CardContent>
     </Card>
   );
