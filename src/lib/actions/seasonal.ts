@@ -16,17 +16,16 @@ export async function suggestSeasonalPromotions(
   result: SuggestSeasonalPromotionsOutput | null;
   error: string | null;
 }> {
-  const input: SuggestSeasonalPromotionsInput = {
-    currentSeason: formData.get('currentSeason') as string,
-    availableProducts: formData.get('availableProducts') as string,
-    recentTrends: formData.get('recentTrends') as string,
-  };
-
-  if (!input.currentSeason || !input.availableProducts || !input.recentTrends) {
-    return { result: null, error: 'All fields are required.' };
-  }
-
   try {
+    const input: SuggestSeasonalPromotionsInput = {
+      currentSeason: formData.get('currentSeason') as string,
+      availableProducts: formData.get('availableProducts') as string,
+      recentTrends: formData.get('recentTrends') as string,
+    };
+
+    if (!input.currentSeason || !input.availableProducts || !input.recentTrends) {
+      return { result: null, error: 'All fields are required.' };
+    }
     const result = await suggestSeasonalPromotionsFlow(input);
     return { result, error: null };
   } catch (e) {

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useActionState } from 'react';
-import { suggestSeasonalPromotions } from '@/lib/actions/seasonal';
+import { useActionState, useTransition } from 'react';
+import { suggestSeasonalPromotions } from '@/ai/flows/suggest-seasonal-promotions';
 import type { SuggestSeasonalPromotionsOutput } from '@/ai/flows/suggest-seasonal-promotions';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,20 +27,12 @@ const initialState: {
 
 export default function SeasonalPage() {
   const [state, formAction] = useActionState(suggestSeasonalPromotions, initialState);
-  const [loading, setLoading] = useState(false);
-
-  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    const formData = new FormData(event.currentTarget);
-    await formAction(formData);
-    setLoading(false);
-  };
+  const [isPending, startTransition] = useTransition();
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       <div className="lg:col-span-2">
-        <form onSubmit={handleFormSubmit}>
+        <form action={(formData) => startTransition(() => formAction(formData))}>
           <Card>
             <CardHeader>
               <CardTitle>Seasonal Promotion Generator</CardTitle>
@@ -78,8 +70,8 @@ export default function SeasonalPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isPending}>
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                 Generate Ideas
               </Button>
             </CardFooter>
@@ -99,13 +91,13 @@ export default function SeasonalPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {loading && (
+            {isPending && (
               <div className="flex flex-col items-center justify-center space-y-4 pt-10 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin" />
                 <p>Thinking up some fresh ideas...</p>
               </div>
             )}
-            {!loading && state.result && (
+            {!isPending && state.result && (
               <>
                 <div className="space-y-2">
                   <h3 className="font-semibold text-lg">Promotion Suggestion</h3>
@@ -121,7 +113,7 @@ export default function SeasonalPage() {
                 </div>
               </>
             )}
-             {!loading && !state.result && (
+             {!isPending && !state.result && (
                  <div className="flex flex-col items-center justify-center space-y-4 pt-10 text-center text-muted-foreground">
                     <Wand2 className="h-10 w-10" />
                     <p>Your promotion ideas will appear here once generated.</p>
