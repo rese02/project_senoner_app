@@ -24,6 +24,7 @@ import { logout } from '@/lib/actions/auth';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
+import { protectPage } from '@/lib/auth-client';
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -92,6 +93,19 @@ const navItems = (
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authorized = await protectPage('customer');
+      setIsAuthorized(authorized);
+    };
+    checkAuth();
+  }, []);
+
+  if (!isAuthorized) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">

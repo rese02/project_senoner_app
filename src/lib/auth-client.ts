@@ -12,21 +12,26 @@ async function getSession(): Promise<{ userId: string; role: UserRole; user: Use
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();
       if (user) {
-        const tokenResult = await user.getIdTokenResult();
-        const role = (tokenResult.claims.role as UserRole) || 'customer';
-        resolve({
-          userId: user.uid,
-          role,
-          user: {
-            // This is a partial user object, fill as needed from auth or firestore
-            id: user.uid,
-            name: user.displayName || 'No Name',
-            email: user.email || 'no-email@example.com',
-            role: role,
-            points: 0, // Points and rewards should be fetched from Firestore
-            rewards: []
-          },
-        });
+        try {
+          const tokenResult = await user.getIdTokenResult();
+          const role = (tokenResult.claims.role as UserRole) || 'customer';
+          resolve({
+            userId: user.uid,
+            role,
+            user: {
+              // This is a partial user object, fill as needed from auth or firestore
+              id: user.uid,
+              name: user.displayName || 'No Name',
+              email: user.email || 'no-email@example.com',
+              role: role,
+              points: 0, // Points and rewards should be fetched from Firestore
+              rewards: []
+            },
+          });
+        } catch (error) {
+            // This can happen if the token is expired or the user is signed out.
+            resolve(null);
+        }
       } else {
         resolve(null);
       }
@@ -43,6 +48,7 @@ export async function verifySession() {
 export async function protectPage(role: UserRole | UserRole[]): Promise<boolean> {
   const session = await getSession();
   const roles = Array.isArray(role) ? role : [role];
+  
   if (!session?.role || !roles.includes(session.role)) {
     redirect('/');
     return false;
