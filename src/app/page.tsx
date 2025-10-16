@@ -1,4 +1,8 @@
+'use client';
+
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useFormStatus } from 'react-dom';
 import { login } from '@/lib/actions/auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,8 +16,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Terminal } from 'lucide-react';
+import React from 'react';
+
+function LoginButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={pending}>
+      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+      Login
+    </Button>
+  );
+}
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
@@ -26,6 +46,13 @@ export default function LoginPage() {
             <CardDescription>Sign in to access your account</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <form action={login} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -49,9 +76,7 @@ export default function LoginPage() {
                   defaultValue="password"
                 />
               </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
-                Login
-              </Button>
+              <LoginButton />
             </form>
           </CardContent>
           <CardFooter className="flex-col gap-4">

@@ -26,7 +26,9 @@ export async function updateUserProfile(
     if (email) userUpdate.email = email;
     if (password) userUpdate.password = password;
     
-    await getFirebaseAuth().updateUser(session.userId, userUpdate);
+    if (Object.keys(userUpdate).length > 0) {
+      await getFirebaseAuth().updateUser(session.userId, userUpdate);
+    }
 
     const userDocRef = firestore.collection('users').doc(session.userId);
     const userDocUpdate: {name?: string, email?: string} = {};
