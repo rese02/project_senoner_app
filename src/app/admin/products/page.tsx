@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { categories as initialCategories } from '@/lib/data';
 import type { Category, Product, OrderOption } from '@/lib/types';
@@ -46,7 +46,7 @@ export default function AdminProductsPage() {
 
     // Category Handlers
     const handleSaveCategory = (categoryData: Category) => {
-        if (editingCategory) {
+        if (editingCategory && editingCategory.id) {
             setCategories(categories.map(c => c.id === categoryData.id ? categoryData : c));
         } else {
             setCategories([...categories, { ...categoryData, id: `cat-${Date.now()}` }]);
@@ -63,7 +63,7 @@ export default function AdminProductsPage() {
         const targetCategory = categories.find(c => c.id === categoryId);
         if (!targetCategory) return;
 
-        if (editingProduct) {
+        if (editingProduct && editingProduct.product.id) {
             const updatedProducts = targetCategory.products.map(p => p.id === productData.id ? productData : p);
             const updatedCategory = { ...targetCategory, products: updatedProducts };
             setCategories(categories.map(c => c.id === categoryId ? updatedCategory : c));
@@ -248,7 +248,7 @@ function CategoryFormDialog({ category, onSave, onClose }: { category: Category 
     const [pickupDays, setPickupDays] = useState<string[]>([]);
     const [image, setImage] = useState('');
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (category) {
             setName(category.name);
             setPickupDays(category.pickupDays);
@@ -317,7 +317,7 @@ function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?:
     const [image, setImage] = useState('');
     const [options, setOptions] = useState<OrderOption[]>([]);
     
-    React.useEffect(() => {
+    useEffect(() => {
         if (product) {
             setName(product.name);
             setImage(product.image || `https://picsum.photos/seed/${Date.now()}/400/300`);
@@ -368,7 +368,7 @@ function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?:
                         <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                             <div className="flex-grow grid grid-cols-2 gap-2">
                                 <Input placeholder="Label (e.g., 0.5kg)" value={option.label} onChange={(e) => handleOptionChange(index, 'label', e.target.value)} />
-                                <Input placeholder="Description (optional)" value={option.description} onChange={(e) => handleOptionChange(index, 'description', e.target.value)} />
+                                <Input placeholder="Description (optional)" value={option.description || ''} onChange={(e) => handleOptionChange(index, 'description', e.target.value)} />
                             </div>
                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeOption(index)}>
                                 <Trash2 className="h-4 w-4" />
