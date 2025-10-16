@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { protectPage } from "@/lib/auth";
-import { LayoutDashboard, LogOut, ShoppingBasket, Sparkles, UserCircle } from "lucide-react";
+import { LayoutDashboard, LogOut, ShoppingBasket, Sparkles, UserCircle, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,6 +45,13 @@ export default async function AdminLayout({
               >
                 <ShoppingBasket className="h-4 w-4" />
                 Orders
+              </Link>
+              <Link
+                href="/admin/products"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Package className="h-4 w-4" />
+                Products
               </Link>
               <Link
                 href="/admin/seasonal"

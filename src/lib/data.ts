@@ -1,4 +1,4 @@
-import type { User, Order, Activity } from './types';
+import type { User, Order, Activity, Category } from './types';
 
 export const users: User[] = [
   {
@@ -85,3 +85,69 @@ export const activity: Activity[] = [
   { day: 'Sat', stamps: 45 },
   { day: 'Sun', stamps: 38 },
 ];
+
+export const categories: Category[] = [
+    {
+        id: 'cat-1',
+        name: 'Frischer Fisch',
+        image: 'https://picsum.photos/seed/fish/600/400',
+        imageHint: 'fresh fish',
+        pickupDays: ['Tue', 'Fri'],
+        products: [
+            {
+                id: 'prod-1-1',
+                name: 'Barsch',
+                image: 'https://picsum.photos/seed/perch/400/300',
+                imageHint: 'perch fish',
+                categoryId: 'cat-1',
+                orderOptions: [
+                    { type: 'quantity', label: 'Stück', description: 'ca. 300-500g pro Fisch' }
+                ]
+            },
+            {
+                id: 'prod-1-2',
+                name: 'Meeresfrüchte',
+                image: 'https://picsum.photos/seed/seafood/400/300',
+                imageHint: 'seafood platter',
+                categoryId: 'cat-1',
+                orderOptions: [
+                    { type: 'portion', label: '0.5kg' },
+                    { type: 'portion', label: '1kg' },
+                    { type: 'portion', label: '1.5kg' },
+                ]
+            }
+        ]
+    },
+    {
+        id: 'cat-2',
+        name: 'Sushi',
+        image: 'https://picsum.photos/seed/sushi/600/400',
+        imageHint: 'sushi platter',
+        pickupDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        products: [
+            {
+                id: 'prod-2-1',
+                name: 'Lachs Nigiri',
+                image: 'https://picsum.photos/seed/nigiri/400/300',
+                imageHint: 'salmon nigiri',
+                categoryId: 'cat-2',
+                orderOptions: [
+                    { type: 'quantity', label: '2 Stück' },
+                    { type: 'quantity', label: '4 Stück' },
+                    { type: 'quantity', label: '6 Stück' },
+                ]
+            },
+            {
+                id: 'prod-2-2',
+                name: 'California Roll',
+                image: 'https://picsum.photos/seed/california/400/300',
+                imageHint: 'california roll',
+                categoryId: 'cat-2',
+                orderOptions: [
+                    { type: 'quantity', label: '4 Stück' },
+                    { type: 'quantity', label: '8 Stück' },
+                ]
+            }
+        ]
+    }
+]
