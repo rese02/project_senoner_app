@@ -36,15 +36,15 @@ export default async function DashboardLayout({
                 href="/dashboard"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
-                <QrCode className="h-4 w-4" />
-                Loyalty Card
-              </Link>
-              <Link
-                href="/dashboard/pre-order"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
                 <ShoppingBasket className="h-4 w-4" />
                 Pre-order
+              </Link>
+              <Link
+                href="/dashboard/loyalty"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <QrCode className="h-4 w-4" />
+                Loyalty Card
               </Link>
               <Link
                 href="/dashboard/profile"
