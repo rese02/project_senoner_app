@@ -5,7 +5,11 @@ import { SignJWT, jwtVerify } from 'jose';
 import type { SessionPayload, UserRole } from '@/lib/types';
 import { users } from '@/lib/data';
 
-const secretKey = process.env.SESSION_SECRET || 'fallback-secret-key-for-development';
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+    throw new Error('The SESSION_SECRET environment variable must be set and be at least 32 characters long.');
+}
+
+const secretKey = process.env.SESSION_SECRET;
 const key = new TextEncoder().encode(secretKey);
 
 export async function encrypt(payload: SessionPayload) {
