@@ -1,0 +1,209 @@
+/**
+ * @file Firestore Security Rules for My Senoner Sarteur App
+ *
+ * @corePhilosophy This ruleset enforces a strict user-ownership model for customer data,
+ *                 role-based access for administrative functions, and public read access for
+ *                 seasonal highlights. It leverages denormalization to avoid costly `get()` calls
+ *                 and structural segregation to ensure efficient list operations.
+ *
+ * @dataStructure The Firestore database is structured as follows:
+ *                 - `/users/{userId}`: Stores customer profiles, with `userId` matching the
+ *                   Firebase Authentication UID.
+ *                 - `/users/{userId}/preorders/{preOrderId}`: Stores pre-orders for each customer,
+ *                   ensuring customers can only access their own pre-orders.
+ *                 - `/users/{userId}/loyalty_data/{loyaltyDataId}`: Stores loyalty data for each
+ *                   customer. There should only be one loyalty data document per user.
+ *                 - `/users/{userId}/activity_logs/{activityLogId}`: Stores activity logs for each customer.
+ *                 - `/seasonal_highlights/{seasonalHighlightId}`: Stores seasonal highlight data,
+ *                   accessible to all users.
+ *                 - `/roles_admin/{userId}`: Stores admin roles. Presence of a document indicates
+ *                   admin status.
+ *                 - `/roles_employee/{userId}`: Stores employee roles. Presence of a document indicates
+ *                   employee status.
+ *
+ * @keySecurityDecisions
+ *   - Customers can only access their own data (preorders, loyalty data, activity logs).
+ *   - Only authenticated admins can manage admin roles.
+ *   - Seasonal highlights are publicly readable.
+ *   - Listing users is not allowed.
+ *
+ * @denormalizationForAuthorization
+ *   - Admin and employee roles are stored in separate collections (`roles_admin`, `roles_employee`) to
+ *     avoid requiring data reads from user documents.
+ *
+ * @structuralSegregation
+ *   - Private user data is stored under the `/users/{userId}` path, while public seasonal highlights
+ *     are stored in a top-level `/seasonal_highlights` collection.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages customer profiles. Enforces path-based ownership, where the userId
+     *              in the path must match the authenticated user's UID.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'user123' can create their own profile at /users/user123.
+     * @allow (get) User with UID 'user123' can read their own profile at /users/user123.
+     * @allow (update) User with UID 'user123' can update their own profile at /users/user123.
+     * @allow (delete) User with UID 'user123' can delete their own profile at /users/user123.
+     * @deny  (create) User with UID 'user123' cannot create a profile for 'user456' at /users/user456.
+     * @deny  (get) User with UID 'user123' cannot read the profile of 'user456' at /users/user456.
+     * @deny  (update) User with UID 'user123' cannot update the profile of 'user456' at /users/user456.
+     * @deny  (delete) User with UID 'user123' cannot delete the profile of 'user456' at /users/user456.
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages pre-orders for each customer. Enforces path-based ownership to ensure
+     *              customers can only access their own pre-orders.
+     * @path /users/{userId}/preorders/{preOrderId}
+     * @allow (create) User with UID 'user123' can create a pre-order under /users/user123/preorders/order456.
+     * @allow (get) User with UID 'user123' can read their pre-order /users/user123/preorders/order456.
+     * @allow (update) User with UID 'user123' can update their pre-order /users/user123/preorders/order456.
+     * @allow (delete) User with UID 'user123' can delete their pre-order /users/user123/preorders/order456.
+     * @deny  (create) User with UID 'user123' cannot create a pre-order for 'user456' under /users/user456/preorders/order789.
+     * @deny  (get) User with UID 'user123' cannot read the pre-order of 'user456' under /users/user456/preorders/order789.
+     * @deny  (update) User with UID 'user123' cannot update the pre-order of 'user456' under /users/user456/preorders/order789.
+     * @deny  (delete) User with UID 'user123' cannot delete the pre-order of 'user456' under /users/user456/preorders/order789.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/preorders/{preOrderId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.customerId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.customerId == resource.data.customerId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages loyalty data for each customer. Enforces path-based ownership.
+     *              Only one loyalty data document per user. The document id is the same as the userId.
+     * @path /users/{userId}/loyalty_data/{loyaltyDataId}
+     * @allow (create) User with UID 'user123' can create their loyalty data under /users/user123/loyalty_data/user123.
+     * @allow (get) User with UID 'user123' can read their loyalty data /users/user123/loyalty_data/user123.
+     * @allow (update) User with UID 'user123' can update their loyalty data /users/user123/loyalty_data/user123.
+     * @allow (delete) User with UID 'user123' can delete their loyalty data /users/user123/loyalty_data/user123.
+     * @deny  (create) User with UID 'user123' cannot create loyalty data for 'user456' under /users/user456/loyalty_data/user456.
+     * @deny  (get) User with UID 'user123' cannot read the loyalty data of 'user456' under /users/user456/loyalty_data/user456.
+     * @deny  (update) User with UID 'user123' cannot update the loyalty data of 'user456' under /users/user456/loyalty_data/user456.
+     * @deny  (delete) User with UID 'user123' cannot delete the loyalty data of 'user456' under /users/user456/loyalty_data/user456.
+     * @principle Validates relational integrity between documents.
+     */
+    match /users/{userId}/loyalty_data/{loyaltyDataId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.customerId == userId && loyaltyDataId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.customerId == resource.data.customerId && loyaltyDataId == userId;
+      allow delete: if isExistingOwner(userId) && loyaltyDataId == userId;
+    }
+
+    /**
+     * @description Manages activity logs for each customer. Enforces path-based ownership.
+     * @path /users/{userId}/activity_logs/{activityLogId}
+     * @allow (create) User with UID 'user123' can create an activity log under /users/user123/activity_logs/log456.
+     * @allow (get) User with UID 'user123' can read their activity log /users/user123/activity_logs/log456.
+     * @allow (update) User with UID 'user123' can update their activity log /users/user123/activity_logs/log456.
+     * @allow (delete) User with UID 'user123' can delete their activity log /users/user123/activity_logs/log456.
+     * @deny  (create) User with UID 'user123' cannot create an activity log for 'user456' under /users/user456/activity_logs/log789.
+     * @deny  (get) User with UID 'user123' cannot read the activity log of 'user456' under /users/user456/activity_logs/log789.
+     * @deny  (update) User with UID 'user123' cannot update the activity log of 'user456' under /users/user456/activity_logs/log789.
+     * @deny  (delete) User with UID 'user123' cannot delete the activity log of 'user456' under /users/user456/activity_logs/log789.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/activity_logs/{activityLogId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.customerId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.customerId == resource.data.customerId;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages seasonal highlight data. Accessible to all users.
+     * @path /seasonal_highlights/{seasonalHighlightId}
+     * @allow (get) Any user can read seasonal highlights.
+     * @allow (list) Any user can list seasonal highlights.
+     * @deny (create) No user can create seasonal highlights without proper authorization. // TODO: Add role-based authorization
+     * @deny (update) No user can update seasonal highlights without proper authorization. // TODO: Add role-based authorization
+     * @deny (delete) No user can delete seasonal highlights without proper authorization. // TODO: Add role-based authorization
+     * @principle Allows public read access with owner-only writes.
+     */
+    match /seasonal_highlights/{seasonalHighlightId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add role-based authorization
+      allow update: if false; // TODO: Add role-based authorization
+      allow delete: if false; // TODO: Add role-based authorization
+    }
+
+    /**
+     * @description Manages admin roles. Presence of a document indicates admin status.
+     * @path /roles_admin/{userId}
+     * @allow (get) Only an admin can read admin roles.
+     * @allow (list) Only an admin can list admin roles.
+     * @allow (create) Only an admin can create admin roles.
+     * @allow (update) Only an admin can update admin roles.
+     * @allow (delete) Only an admin can delete admin roles.
+     * @deny  (get) Non-admin user cannot read admin roles.
+     * @deny  (list) Non-admin user cannot list admin roles.
+     * @deny  (create) Non-admin user cannot create admin roles.
+     * @deny  (update) Non-admin user cannot update admin roles.
+     * @deny  (delete) Non-admin user cannot delete admin roles.
+     * @principle Enforces role-based access control.
+     */
+    match /roles_admin/{userId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+     /**
+     * @description Manages employee roles. Presence of a document indicates employee status.
+     * @path /roles_employee/{userId}
+     * @allow (get) Only an admin can read employee roles.
+     * @allow (list) Only an admin can list employee roles.
+     * @allow (create) Only an admin can create employee roles.
+     * @allow (update) Only an admin can update employee roles.
+     * @allow (delete) Only an admin can delete employee roles.
+     * @deny  (get) Non-admin user cannot read employee roles.
+     * @deny  (list) Non-admin user cannot list employee roles.
+     * @deny  (create) Non-admin user cannot create employee roles.
+     * @deny  (update) Non-admin user cannot update employee roles.
+     * @deny  (delete) Non-admin user cannot delete employee roles.
+     * @principle Enforces role-based access control.
+     */
+    match /roles_employee/{userId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+  }
+}

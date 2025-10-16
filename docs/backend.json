@@ -1,0 +1,381 @@
+{
+  "entities": {
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The customer's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The customer's last name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The customer's email address.",
+          "format": "email"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date and time the customer registered.",
+          "format": "date-time"
+        },
+        "loyaltyPoints": {
+          "type": "number",
+          "description": "The customer's current loyalty points balance."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "registrationDate",
+        "loyaltyPoints"
+      ]
+    },
+    "Employee": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Employee",
+      "type": "object",
+      "description": "Represents an employee of the store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Employee entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The employee's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The employee's last name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The employee's email address.",
+          "format": "email"
+        },
+        "hireDate": {
+          "type": "string",
+          "description": "The date the employee was hired.",
+          "format": "date-time"
+        },
+        "role": {
+          "type": "string",
+          "description": "The employee's role (e.g., 'scanner', 'admin')."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "hireDate",
+        "role"
+      ]
+    },
+    "PreOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PreOrder",
+      "type": "object",
+      "description": "Represents a pre-order placed by a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PreOrder entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N PreOrder)"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "The date and time the order was placed.",
+          "format": "date-time"
+        },
+        "pickupDate": {
+          "type": "string",
+          "description": "The requested date and time for order pickup.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the order (e.g., 'pending', 'ready', 'collected')."
+        },
+        "items": {
+          "type": "array",
+          "description": "A list of items in the pre-order.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the pre-order."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "orderDate",
+        "pickupDate",
+        "status",
+        "items",
+        "totalAmount"
+      ]
+    },
+    "LoyaltyData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LoyaltyData",
+      "type": "object",
+      "description": "Represents loyalty data for a customer, including stamps.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LoyaltyData entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:1 LoyaltyData)"
+        },
+        "stamps": {
+          "type": "number",
+          "description": "The number of loyalty stamps the customer has."
+        },
+        "lastStampDate": {
+          "type": "string",
+          "description": "The date and time the customer last received a stamp.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "stamps"
+      ]
+    },
+    "SeasonalHighlight": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SeasonalHighlight",
+      "type": "object",
+      "description": "Represents a seasonal promotion or highlight.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SeasonalHighlight entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the seasonal highlight."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the seasonal highlight."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the seasonal highlight.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the seasonal highlight.",
+          "format": "date-time"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image associated with the seasonal highlight.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "startDate",
+        "endDate",
+        "imageUrl"
+      ]
+    },
+    "ActivityLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ActivityLog",
+      "type": "object",
+      "description": "Represents an activity log entry for customer engagement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ActivityLog entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N ActivityLog)"
+        },
+        "activityType": {
+          "type": "string",
+          "description": "The type of activity (e.g., 'stampReceived', 'orderPlaced', 'rewardRedeemed')."
+        },
+        "activityDate": {
+          "type": "string",
+          "description": "The date and time of the activity.",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "string",
+          "description": "Details about the activity (e.g., product ordered, reward redeemed)."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "activityType",
+        "activityDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer profiles. The userId is the Firebase Authentication UID. This path enforces path-based ownership. The 'roles_admin' and 'roles_employee' collections are used to manage admin and employee roles, respectively.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/preorders/{preOrderId}",
+        "definition": {
+          "entityName": "PreOrder",
+          "schema": {
+            "$ref": "#/backend/entities/PreOrder"
+          },
+          "description": "Stores pre-orders for each customer. Enforces path-based ownership to ensure customers can only access their own pre-orders.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the customer placing the pre-order."
+            },
+            {
+              "name": "preOrderId",
+              "description": "The unique ID of the pre-order document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/loyalty_data/{loyaltyDataId}",
+        "definition": {
+          "entityName": "LoyaltyData",
+          "schema": {
+            "$ref": "#/backend/entities/LoyaltyData"
+          },
+          "description": "Stores loyalty data for each customer. Enforces path-based ownership. Only one loyalty data document per user. The document id is the same as the userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the customer."
+            },
+            {
+              "name": "loyaltyDataId",
+              "description": "The unique ID of the loyalty data. Should be equal to the userId."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/activity_logs/{activityLogId}",
+        "definition": {
+          "entityName": "ActivityLog",
+          "schema": {
+            "$ref": "#/backend/entities/ActivityLog"
+          },
+          "description": "Stores activity logs for each customer. Enforces path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the customer."
+            },
+            {
+              "name": "activityLogId",
+              "description": "The unique ID of the activity log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/seasonal_highlights/{seasonalHighlightId}",
+        "definition": {
+          "entityName": "SeasonalHighlight",
+          "schema": {
+            "$ref": "#/backend/entities/SeasonalHighlight"
+          },
+          "description": "Stores seasonal highlight data. Accessible to all users.",
+          "params": [
+            {
+              "name": "seasonalHighlightId",
+              "description": "The unique ID of the seasonal highlight."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Employee"
+          },
+          "description": "Collection to store admin roles. Presence of a document indicates admin status.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the admin."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_employee/{userId}",
+        "definition": {
+          "entityName": "Employee",
+          "schema": {
+            "$ref": "#/backend/entities/Employee"
+          },
+          "description": "Collection to store employee roles. Presence of a document indicates employee status.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the employee."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the 'My Senoner Sarteur' application, focusing on security, scalability, and maintainability. It leverages denormalization for authorization independence and structural segregation to simplify security rules and ensure QAPs.\n\nAuthorization Independence:\nCustomer-owned data (preorders, loyalty data, activity logs) is stored under `/users/{userId}`. This eliminates the need for `get()` calls in security rules to validate ownership.  The `roles_admin/{userId}` collection facilitates admin verification without requiring data reads from user documents.  The employee role leverages the `roles_employee/{userId}` collection for similar reasons.\n\nQAPs:\nThe structure enables secure `list` operations by segregating data based on access needs (e.g., admin-only roles in `/roles_admin`). Path-based ownership (`/users/{userId}/preorders`) allows customers to list only their own preorders. The `roles_employee` collection facilitates listing employees without exposing sensitive user data.\n\nSeasonal highlights are stored in a top-level `/seasonal_highlights` collection as they do not have ownership constraints and are accessible to all users."
+  }
+}
