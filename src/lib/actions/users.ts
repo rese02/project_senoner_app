@@ -55,7 +55,8 @@ export async function processStamp(
     }
 
     if (action === 'find') {
-        return { message: 'success_find', customer };
+        // We need to return a *copy* of the customer object for React to detect a change
+        return { message: 'success_find', customer: { ...customer } };
     }
 
     if (action === 'stamp') {
@@ -68,7 +69,7 @@ export async function processStamp(
             });
         }
         revalidatePath('/scanner');
-        revalidatePath('/dashboard');
+        revalidatePath('/dashboard/loyalty');
         return { message: 'success_stamp', customer: null };
     }
 
@@ -97,7 +98,7 @@ export async function redeemRewardAction(
     if (customer.rewards.length > 0) {
         customer.rewards.pop(); // Redeem the most recent reward
         revalidatePath('/scanner');
-        revalidatePath('/dashboard');
+        revalidatePath('/dashboard/loyalty');
         return { message: 'success' };
     }
 

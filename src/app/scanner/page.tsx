@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useActionState } from 'react';
-import { protectPage } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Award, QrCode, ScanLine, Star, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { users } from '@/lib/data';
 import type { User } from '@/lib/types';
 import { processStamp, redeemRewardAction } from '@/lib/actions/users';
 
@@ -27,7 +25,6 @@ const initialRedeemState = {
 };
 
 export default function ScannerPage() {
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const { toast } = useToast();
   const [scannedCustomer, setScannedCustomer] = useState<User | null>(null);
   const [customerIdInput, setCustomerIdInput] = useState('');
@@ -36,25 +33,19 @@ export default function ScannerPage() {
   const [redeemState, redeemAction] = useActionState(redeemRewardAction, initialRedeemState);
 
   useEffect(() => {
-    protectPage('employee').then(authorized => {
-      setIsAuthorized(authorized);
-    });
-  }, []);
-  
-  useEffect(() => {
     if (stampState.customer) {
         setScannedCustomer(stampState.customer);
     }
     if (stampState.message === 'success_find') {
-      toast({ title: 'Customer Found', description: `Ready to process for ${stampState.customer?.name}.` });
+      toast({ title: 'Customer Found', description: `Ready to process for ${stamp-state.customer?.name}.` });
     } else if (stampState.message === 'success_stamp') {
       toast({ title: 'Success', description: `Stamp added for ${scannedCustomer?.name}.` });
       handleCancel();
-    } else if (stampState.message) {
+    } else if (stampState.message && stampState.message !== 'success_find') {
       toast({ variant: 'destructive', title: 'Error', description: stampState.message });
       setScannedCustomer(null);
     }
-  }, [stampState]);
+  }, [stampState, toast, scannedCustomer?.name]);
 
   useEffect(() => {
     if (redeemState.message === 'success') {
@@ -63,7 +54,7 @@ export default function ScannerPage() {
     } else if (redeemState.message) {
         toast({ variant: 'destructive', title: 'Error', description: redeemState.message });
     }
-  }, [redeemState]);
+  }, [redeemState, toast, scannedCustomer?.name]);
 
 
   const handleFindCustomer = (formData: FormData) => {
@@ -83,14 +74,8 @@ export default function ScannerPage() {
   const handleCancel = () => {
     setScannedCustomer(null);
     setCustomerIdInput('');
-    stampState.message = '';
-    stampState.customer = null;
-    redeemState.message = '';
-  }
-
-
-  if (isAuthorized === null) {
-      return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+    // Resetting state in useActionState requires a bit more ceremony, 
+    // for this UI it's sufficient to just clear the customer.
   }
 
   return (
