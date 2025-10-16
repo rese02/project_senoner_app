@@ -3,26 +3,24 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
 import type { SessionPayload, UserRole } from '@/lib/types';
-import { auth } from 'firebase-admin';
-import { initFirebaseAdminApp } from '@/firebase/admin';
+import { adminAuth, initFirebaseAdminApp } from '@/firebase/admin';
 
 initFirebaseAdminApp();
 
 export function getFirebaseAuth() {
-  return auth();
+  return adminAuth;
 }
 
 export function getAnonymousUser() {
     return getFirebaseAuth().createUser({});
 }
 
-
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+const secret = process.env.SESSION_SECRET;
+if (!secret || secret.length < 32) {
     throw new Error('The SESSION_SECRET environment variable must be set and be at least 32 characters long.');
 }
 
-const secretKey = process.env.SESSION_SECRET;
-const key = new TextEncoder().encode(secretKey);
+const key = new TextEncoder().encode(secret);
 
 export async function encrypt(payload: SessionPayload) {
   return new SignJWT(payload)

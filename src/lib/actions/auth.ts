@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string;
   
   try {
-    const { user } = await getAnonymousUser();
+    const user  = await getAnonymousUser();
     if (!user) throw new Error("Could not get anonymous user");
 
     await getFirebaseAuth().updateUser(user.uid, { email, password });
@@ -58,7 +58,7 @@ export async function register(formData: FormData) {
     }
 
     try {
-        const { user } = await getAnonymousUser();
+        const user = await getAnonymousUser();
         if (!user) throw new Error("Could not get anonymous user");
 
         await getFirebaseAuth().updateUser(user.uid, {
