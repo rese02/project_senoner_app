@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useState, useActionState } from 'react';
 import { suggestSeasonalPromotions } from '@/lib/actions/seasonal';
 import type { SuggestSeasonalPromotionsOutput } from '@/ai/flows/suggest-seasonal-promotions';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,7 @@ const initialState: {
 };
 
 export default function SeasonalPage() {
-  const [state, formAction] = useFormState(suggestSeasonalPromotions, initialState);
+  const [state, formAction] = useActionState(suggestSeasonalPromotions, initialState);
   const [loading, setLoading] = useState(false);
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

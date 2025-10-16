@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateUserProfile } from '@/lib/actions/users';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
 import { verifySession } from '@/lib/auth-client';
 import { users } from '@/lib/data';
@@ -25,7 +24,7 @@ const initialState = {
 
 export default function ProfilePage() {
   const { toast } = useToast();
-  const [state, formAction] = useFormState(updateUserProfile, initialState);
+  const [state, formAction] = useActionState(updateUserProfile, initialState);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {

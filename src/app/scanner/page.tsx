@@ -1,6 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useFormState } from 'react-dom';
+import { useState, useEffect, useActionState } from 'react';
 import { protectPage } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,8 +32,8 @@ export default function ScannerPage() {
   const [scannedCustomer, setScannedCustomer] = useState<User | null>(null);
   const [customerIdInput, setCustomerIdInput] = useState('');
 
-  const [stampState, stampAction] = useFormState(processStamp, initialStampState);
-  const [redeemState, redeemAction] = useFormState(redeemRewardAction, initialRedeemState);
+  const [stampState, stampAction] = useActionState(processStamp, initialStampState);
+  const [redeemState, redeemAction] = useActionState(redeemRewardAction, initialRedeemState);
 
   useEffect(() => {
     protectPage('employee').then(authorized => {

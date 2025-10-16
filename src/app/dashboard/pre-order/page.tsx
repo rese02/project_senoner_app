@@ -1,5 +1,5 @@
 'use client';
-import { useFormState } from 'react-dom';
+import { useActionState } from 'react';
 import {
   Card,
   CardContent,
@@ -41,7 +41,7 @@ const initialState = {
 
 export default function PreOrderPage() {
   const { toast } = useToast();
-  const [state, formAction] = useFormState(placeOrder, initialState);
+  const [state, formAction] = useActionState(placeOrder, initialState);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
 
