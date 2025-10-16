@@ -14,10 +14,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -25,16 +26,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export function OrdersDataTable({ data }: { data: Order[] }) {
-  const [orders, setOrders] = useState<Order[]>(data);
+export function OrdersDataTable({ data, onOrdersChange }: { data: Order[], onOrdersChange: (orders: Order[]) => void }) {
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
 
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
+    const updatedOrders = data.map((order) =>
+      order.id === orderId ? { ...order, status: newStatus } : order
     );
+    onOrdersChange(updatedOrders);
+  };
+
+  const handleDeleteOrder = (orderId: string) => {
+    const updatedOrders = data.filter((order) => order.id !== orderId);
+    onOrdersChange(updatedOrders);
+    setDeletingOrder(null);
   };
 
   const getStatusVariant = (status: Order['status']) => {
@@ -66,7 +91,7 @@ export function OrdersDataTable({ data }: { data: Order[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
+            {data.length > 0 ? data.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.customerName}</TableCell>
                 <TableCell>{order.product}</TableCell>
@@ -95,15 +120,59 @@ export function OrdersDataTable({ data }: { data: Order[] }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>View Details</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setViewingOrder(order)}>View Details</DropdownMenuItem>
+                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => setDeletingOrder(order)} className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            )) : (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingOrder} onOpenChange={(isOpen) => !isOpen && setViewingOrder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Order Details for {viewingOrder?.customerName}</DialogTitle>
+            <DialogDescription>
+                Order ID: {viewingOrder?.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="prose prose-sm text-muted-foreground">
+            <pre className="p-4 bg-muted rounded-md overflow-x-auto">
+                <code>{viewingOrder?.details}</code>
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingOrder} onOpenChange={(isOpen) => !isOpen && setDeletingOrder(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the order for {deletingOrder?.customerName}.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deletingOrder && handleDeleteOrder(deletingOrder.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
