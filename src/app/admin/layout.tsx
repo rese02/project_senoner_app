@@ -1,7 +1,17 @@
-import Link from "next/link";
-import { protectPage } from "@/lib/auth";
-import { LayoutDashboard, LogOut, ShoppingBasket, Sparkles, UserCircle, Package } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  LogOut,
+  ShoppingBasket,
+  Sparkles,
+  UserCircle,
+  Package,
+  Menu,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,16 +19,91 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Logo } from "@/components/logo";
-import { logout } from "@/lib/actions/auth";
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Logo } from '@/components/logo';
+import { logout } from '@/lib/actions/auth';
+import { cn } from '@/lib/utils';
+import type { User } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { verifySession } from '@/lib/auth-client';
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { user } = await protectPage("admin");
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+        isActive && 'bg-muted text-primary'
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function MobileNav({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="flex flex-col">
+        <nav className="grid gap-2 text-lg font-medium">
+          <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-4">
+            <Logo className="h-6 w-6 text-primary" />
+            <span className="font-headline text-xl">Senoner Sarteur</span>
+          </Link>
+          {children}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+const navItems = (
+  <>
+    <NavLink href="/admin">
+      <LayoutDashboard className="h-4 w-4" />
+      Dashboard
+    </NavLink>
+    <NavLink href="/admin/orders">
+      <ShoppingBasket className="h-4 w-4" />
+      Orders
+    </NavLink>
+    <NavLink href="/admin/products">
+      <Package className="h-4 w-4" />
+      Products
+    </NavLink>
+    <NavLink href="/admin/seasonal">
+      <Sparkles className="h-4 w-4" />
+      Seasonal
+    </NavLink>
+  </>
+);
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    verifySession().then((session) => {
+      if (session?.user) {
+        setUser(session.user);
+      }
+    });
+  }, []);
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -31,43 +116,15 @@ export default async function AdminLayout({
             </Link>
           </div>
           <div className="flex-1">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              <Link
-                href="/admin"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </Link>
-              <Link
-                href="/admin/orders"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <ShoppingBasket className="h-4 w-4" />
-                Orders
-              </Link>
-              <Link
-                href="/admin/products"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Package className="h-4 w-4" />
-                Products
-              </Link>
-              <Link
-                href="/admin/seasonal"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Sparkles className="h-4 w-4" />
-                Seasonal
-              </Link>
-            </nav>
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">{navItems}</nav>
           </div>
         </div>
       </div>
       <div className="flex flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+          <MobileNav>{navItems}</MobileNav>
           <div className="w-full flex-1">
-            {/* Can add mobile nav toggle here */}
+            {/* Can add search bar here */}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -77,7 +134,7 @@ export default async function AdminLayout({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <form action={logout}>
                 <DropdownMenuItem asChild>

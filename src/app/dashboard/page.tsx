@@ -34,7 +34,7 @@ import { placeOrder } from '@/lib/actions/orders';
 import { useToast } from '@/hooks/use-toast';
 import type { Order, Product } from '@/lib/types';
 import { verifySession } from '@/lib/auth-client';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, X } from 'lucide-react';
 
 const initialState = {
   message: '',
@@ -138,8 +138,8 @@ export default function PreOrderPage() {
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-5">
-      <div className="md:col-span-3">
+    <div className="grid gap-6 lg:grid-cols-5">
+      <div className="lg:col-span-3">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Place a Pre-Order</CardTitle>
@@ -206,7 +206,7 @@ export default function PreOrderPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="md:col-span-2 space-y-6">
+      <div className="lg:col-span-2 space-y-6">
         <form action={handleSubmitOrder}>
             <Card className="shadow-lg">
                 <CardHeader>
@@ -222,9 +222,9 @@ export default function PreOrderPage() {
                         <div className="space-y-2">
                             {cart.map((item, index) => (
                                 <div key={index} className="flex justify-between items-center text-sm">
-                                    <p>{item.quantity}x {item.product.name} ({item.option})</p>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCart(cart.filter((_, i) => i !== index))}>
-                                        <span className="text-red-500">×</span>
+                                    <span className="flex-1">{item.quantity}x {item.product.name} ({item.option})</span>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => setCart(cart.filter((_, i) => i !== index))}>
+                                        <X className="h-4 w-4 text-muted-foreground" />
                                     </Button>
                                 </div>
                             ))}
@@ -252,7 +252,7 @@ export default function PreOrderPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Product</TableHead>
+                  <TableHead className="hidden sm:table-cell">Product</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -260,7 +260,7 @@ export default function PreOrderPage() {
                 {userOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>{order.date}</TableCell>
-                    <TableCell>{order.product}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{order.product}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(order.status)} className="capitalize">
                         {order.status}

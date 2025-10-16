@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { categories as initialCategories } from '@/lib/data';
 import type { Category, Product, OrderOption } from '@/lib/types';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Upload, Edit } from 'lucide-react';
+import { PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -87,7 +87,7 @@ export default function AdminProductsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">Product Management</h1>
                     <p className="text-muted-foreground">Add, edit, and manage your product categories and items.</p>
@@ -109,22 +109,24 @@ export default function AdminProductsPage() {
             
             {categories.map(category => (
                 <Card key={category.id} className="shadow-md">
-                    <CardHeader className="flex flex-row justify-between items-start">
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="flex items-center gap-4">
-                            <Image
-                                src={category.image}
-                                alt={category.name}
-                                width={100}
-                                height={60}
-                                className="rounded-md object-cover"
-                                data-ai-hint={category.imageHint}
-                            />
+                             <div className="w-24 h-16 sm:w-28 sm:h-20 flex-shrink-0">
+                                <Image
+                                    src={category.image}
+                                    alt={category.name}
+                                    width={100}
+                                    height={60}
+                                    className="rounded-md object-cover w-full h-full"
+                                    data-ai-hint={category.imageHint}
+                                />
+                             </div>
                             <div>
                                 <CardTitle className="text-xl">{category.name}</CardTitle>
                                 <CardDescription>Pickup on: {category.pickupDays.join(', ')}</CardDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 self-start sm:self-center">
                              <Dialog onOpenChange={(isOpen) => !isOpen && setEditingCategory(null)}>
                                 <DialogTrigger asChild>
                                      <Button variant="ghost" size="icon" onClick={() => setEditingCategory(category)}>
@@ -160,7 +162,7 @@ export default function AdminProductsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <h4 className="font-semibold text-md">Products in this Category</h4>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {category.products.map(product => (
                                 <Card key={product.id} className="flex flex-col">
                                     <CardHeader className="p-4">
@@ -201,7 +203,7 @@ export default function AdminProductsPage() {
                                         </Dialog>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button variant="outline" size="icon" className="text-destructive">
+                                                <Button variant="outline" size="icon" className="text-destructive flex-shrink-0">
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </AlertDialogTrigger>
@@ -223,7 +225,7 @@ export default function AdminProductsPage() {
                             ))}
                              <Dialog onOpenChange={(isOpen) => !isOpen && setEditingProduct(null)}>
                                 <DialogTrigger asChild>
-                                     <Button variant="outline" className="h-full border-dashed flex-col gap-2" onClick={() => setEditingProduct({product: {id: '', name: '', image: '', imageHint: '', categoryId: category.id, orderOptions: []}, categoryId: category.id})}>
+                                     <Button variant="outline" className="h-full border-dashed flex-col gap-2 min-h-[200px]" onClick={() => setEditingProduct({product: {id: '', name: '', image: '', imageHint: '', categoryId: category.id, orderOptions: []}, categoryId: category.id})}>
                                         <PlusCircle className="h-6 w-6" />
                                         <span>Add Product</span>
                                     </Button>
@@ -366,11 +368,11 @@ function ProductFormDialog({ product, categoryId, onSave, onClose }: { product?:
                     <Label>Order Options</Label>
                     {options.map((option, index) => (
                         <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                            <div className="flex-grow grid grid-cols-2 gap-2">
+                            <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <Input placeholder="Label (e.g., 0.5kg)" value={option.label} onChange={(e) => handleOptionChange(index, 'label', e.target.value)} />
                                 <Input placeholder="Description (optional)" value={option.description || ''} onChange={(e) => handleOptionChange(index, 'description', e.target.value)} />
                             </div>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeOption(index)}>
+                            <Button variant="ghost" size="icon" className="text-destructive flex-shrink-0" onClick={() => removeOption(index)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>

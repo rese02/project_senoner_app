@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Award, Star } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 
 export default async function CustomerDashboardPage() {
   const session = await verifySession();
@@ -23,7 +22,7 @@ export default async function CustomerDashboardPage() {
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <Card className="lg:col-span-1 shadow-lg">
+      <Card className="lg:col-span-3 xl:col-span-1 shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-2xl">Your Loyalty Card</CardTitle>
           <CardDescription>Present this QR code at checkout</CardDescription>
@@ -42,7 +41,7 @@ export default async function CustomerDashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="lg:col-span-2 space-y-6">
+      <div className="lg:col-span-3 xl:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

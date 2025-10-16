@@ -33,7 +33,7 @@ import {
 import { subDays, subMonths, isAfter, startOfDay } from "date-fns";
 import { Trash2 } from "lucide-react";
 
-type TimePeriod = "today" | "yesterday" | "last7days" | "last30days" | "last6months" | "all";
+type TimePeriod = "all" | "today" | "yesterday" | "last7days" | "last30days" | "last6months";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
@@ -85,14 +85,14 @@ export default function AdminOrdersPage() {
 
   return (
     <Card>
-      <CardHeader className="flex-row justify-between items-center">
+      <CardHeader className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <CardTitle>Pre-Orders</CardTitle>
           <CardDescription>Manage and track all customer pre-orders.</CardDescription>
         </div>
         <div className="flex items-center gap-2">
             <Select onValueChange={(value) => setFilterPeriod(value as TimePeriod)} defaultValue="all">
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Select period to delete" />
                 </SelectTrigger>
                 <SelectContent>

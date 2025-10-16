@@ -32,7 +32,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -82,8 +81,8 @@ export function OrdersDataTable({ data, onOrdersChange }: { data: Order[], onOrd
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead className="hidden sm:table-cell">Product</TableHead>
+              <TableHead className="hidden md:table-cell">Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
@@ -94,14 +93,14 @@ export function OrdersDataTable({ data, onOrdersChange }: { data: Order[], onOrd
             {data.length > 0 ? data.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.customerName}</TableCell>
-                <TableCell>{order.product}</TableCell>
-                <TableCell>{order.date}</TableCell>
+                <TableCell className="hidden sm:table-cell">{order.product}</TableCell>
+                <TableCell className="hidden md:table-cell">{order.date}</TableCell>
                 <TableCell>
                   <Select
                     value={order.status}
                     onValueChange={(value) => handleStatusChange(order.id, value as Order['status'])}
                   >
-                    <SelectTrigger className="w-[120px] h-8">
+                    <SelectTrigger className="w-[120px] h-8 text-xs sm:text-sm">
                        <Badge variant={getStatusVariant(order.status)} className="capitalize">{order.status}</Badge>
                     </SelectTrigger>
                     <SelectContent>
