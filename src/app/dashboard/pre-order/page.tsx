@@ -1,3 +1,5 @@
+'use client';
+import { useFormState } from 'react-dom';
 import {
   Card,
   CardContent,
@@ -5,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -13,25 +15,65 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { orders } from "@/lib/data";
-import { verifySession } from "@/lib/auth";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { orders } from '@/lib/data';
+import { placeOrder } from '@/lib/actions/orders';
+import { useToast } from '@/hooks/use-toast';
+import React, { useEffect, useState } from 'react';
+import type { Order } from '@/lib/types';
+import { verifySession } from '@/lib/auth-client';
 
-export default async function PreOrderPage() {
-  const session = await verifySession();
-  const userOrders = orders.filter(o => o.customerId === session?.userId);
+const initialState = {
+  message: '',
+};
+
+export default function PreOrderPage() {
+  const { toast } = useToast();
+  const [state, formAction] = useFormState(placeOrder, initialState);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+
+   useEffect(() => {
+    async function getSession() {
+        const session = await verifySession();
+        if (session?.userId) {
+            setUserId(session.userId);
+            const filteredOrders = orders.filter(o => o.customerId === session.userId);
+            setUserOrders(filteredOrders);
+        }
+    }
+    getSession();
+  }, []);
+
+  useEffect(() => {
+    if (state.message === 'success') {
+      toast({
+        title: 'Order Placed!',
+        description: 'Your pre-order has been successfully submitted.',
+      });
+      if(userId) {
+        setUserOrders(orders.filter(o => o.customerId === userId));
+      }
+    } else if (state.message) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: state.message,
+      });
+    }
+  }, [state, toast, userId]);
 
   const getStatusVariant = (status: (typeof orders)[0]['status']) => {
     switch (status) {
@@ -45,43 +87,47 @@ export default async function PreOrderPage() {
   return (
     <div className="grid gap-6 md:grid-cols-5">
       <div className="md:col-span-2">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Place a Pre-Order</CardTitle>
-            <CardDescription>
-              Order your favorite sushi or fresh fish in advance.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="product">Product Type</Label>
-              <Select>
-                <SelectTrigger id="product">
-                  <SelectValue placeholder="Select a product" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sushi">Sushi</SelectItem>
-                  <SelectItem value="fresh-fish">Fresh Fish</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="details">Order Details</Label>
-              <Textarea
-                id="details"
-                placeholder="e.g., '2x Salmon Nigiri' or '1kg Cod'"
-              />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="pickup-date">Pickup Date</Label>
-                <Input id="pickup-date" type="date" />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full bg-accent hover:bg-accent/90">Place Order</Button>
-          </CardFooter>
-        </Card>
+        <form action={formAction}>
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle>Place a Pre-Order</CardTitle>
+              <CardDescription>
+                Order your favorite sushi or fresh fish in advance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="product">Product Type</Label>
+                <Select name="product">
+                  <SelectTrigger id="product">
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sushi">Sushi</SelectItem>
+                    <SelectItem value="Fresh Fish">Fresh Fish</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="details">Order Details</Label>
+                <Textarea
+                  id="details"
+                  name="details"
+                  placeholder="e.g., '2x Salmon Nigiri' or '1kg Cod'"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="pickup-date">Pickup Date</Label>
+                  <Input id="pickup-date" name="pickup-date" type="date" required />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90">Place Order</Button>
+            </CardFooter>
+          </Card>
+        </form>
       </div>
       <div className="md:col-span-3">
         <Card className="shadow-lg">

@@ -1,8 +1,9 @@
 'use client';
-import { UserRole } from './types';
+import { User, UserRole } from './types';
 import { redirect } from 'next/navigation';
+import { users } from './data';
 
-async function getSessionRole() {
+async function getSession() {
   const cookie = document.cookie
     .split('; ')
     .find(row => row.startsWith('session='));
@@ -14,16 +15,28 @@ async function getSessionRole() {
     if (payload.exp * 1000 < Date.now()) {
       return null;
     }
-    return payload.role as UserRole;
+    
+    const user = users.find(u => u.id === payload.userId);
+
+    if (!user || user.role !== payload.role) {
+        return null;
+    }
+
+    return { userId: payload.userId as string, role: payload.role as UserRole, user };
+
   } catch (e) {
     return null;
   }
 }
 
+export async function verifySession() {
+    return await getSession();
+}
+
 export async function protectPage(role: UserRole | UserRole[]): Promise<boolean> {
-  const sessionRole = await getSessionRole();
+  const session = await getSession();
   const roles = Array.isArray(role) ? role : [role];
-  if (!sessionRole || !roles.includes(sessionRole)) {
+  if (!session?.role || !roles.includes(session.role)) {
     redirect('/');
     return false;
   }
