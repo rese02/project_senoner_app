@@ -1,25 +1,70 @@
+'server-only';
 import 'server-only';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
 import type { SessionPayload, UserRole } from '@/lib/types';
-import { adminAuth, initFirebaseAdminApp } from '@/firebase/admin';
+import { initializeApp, getApps, App, cert, ServiceAccount } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-initFirebaseAdminApp();
+// --- Firebase Admin SDK Initialization ---
+
+let adminApp: App | null = null;
+let adminAuth: Auth | null = null;
+
+function initializeFirebaseAdmin() {
+  if (getApps().length > 0) {
+    if (!adminApp) {
+        adminApp = getApps()[0];
+    }
+    if (!adminAuth) {
+        adminAuth = getAuth(adminApp);
+    }
+    return { adminApp, adminAuth };
+  }
+
+  try {
+    const serviceAccountKey = process.env.SERVICE_ACCOUNT_KEY;
+    if (!serviceAccountKey) {
+      throw new Error('The SERVICE_ACCOUNT_KEY environment variable is not set.');
+    }
+    const serviceAccount: ServiceAccount = JSON.parse(serviceAccountKey);
+    
+    adminApp = initializeApp({
+      credential: cert(serviceAccount),
+    });
+    adminAuth = getAuth(adminApp);
+    
+    console.log("Firebase Admin SDK initialized successfully.");
+    return { adminApp, adminAuth };
+
+  } catch (error: any) {
+    console.error("Firebase Admin SDK initialization failed:", error.message);
+    throw new Error("Server configuration error. Could not initialize Firebase Admin SDK.");
+  }
+}
 
 export function getFirebaseAuth() {
-  return adminAuth;
+  if (!adminAuth) {
+    initializeFirebaseAdmin();
+  }
+  return adminAuth as Auth;
 }
 
-export function getAnonymousUser() {
-    return adminAuth.createUser({});
+export function getFirestoreAdmin() {
+    if (!adminApp) {
+        initializeFirebaseAdmin();
+    }
+    return getFirestore(adminApp as App);
 }
+
+// --- Session Management ---
 
 const secret = process.env.SESSION_SECRET;
 if (!secret || secret.length < 32) {
     throw new Error('The SESSION_SECRET environment variable must be set and be at least 32 characters long.');
 }
-
 const key = new TextEncoder().encode(secret);
 
 export async function encrypt(payload: SessionPayload) {
@@ -45,7 +90,6 @@ export async function createSession(userId: string, role: UserRole) {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
   const session = await encrypt({ userId, role, expiresAt });
   
-  // Set the session cookie with the role
   cookies().set('session', session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -54,12 +98,11 @@ export async function createSession(userId: string, role: UserRole) {
     path: '/',
   });
 
-  // Set a custom claim on the Firebase user for client-side role checks
   try {
-    await adminAuth.setCustomUserClaims(userId, { role });
+    const auth = getFirebaseAuth();
+    await auth.setCustomUserClaims(userId, { role });
   } catch (error) {
     console.error("Error setting custom user claims:", error);
-    // Handle error appropriately, maybe by deleting the session
     throw new Error("Could not set user role for the session.");
   }
 }
@@ -86,9 +129,8 @@ export async function deleteSession() {
   const session = await decrypt(sessionCookie);
   
   if (session?.userId) {
-    // Revoke the refresh tokens to force re-login on all devices
     try {
-        await adminAuth.revokeRefreshTokens(session.userId);
+        await getFirebaseAuth().revokeRefreshTokens(session.userId);
     } catch(e) {
         console.error("Error revoking refresh tokens:", e);
     }

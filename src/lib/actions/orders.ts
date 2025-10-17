@@ -3,8 +3,10 @@
 import { verifySession } from '@/lib/auth';
 import type { Order, User } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
-import { addDocumentNonBlocking, firestore } from '@/firebase';
+import { addDocumentNonBlocking, getFirestoreAdmin } from '@/firebase';
 import { collection, serverTimestamp } from 'firebase/firestore';
+
+const firestore = getFirestoreAdmin();
 
 export async function placeOrder(
   prevState: { message: string },

@@ -1,11 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createSession, deleteSession, getFirebaseAuth } from '@/lib/auth';
+import { createSession, deleteSession, getFirebaseAuth, getFirestoreAdmin } from '@/lib/auth';
 import { User, UserRole } from '@/lib/types';
-import { firestore } from '@/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { Auth } from 'firebase-admin/auth';
+import { Auth, UserRecord } from 'firebase-admin/auth';
+
+const firestore = getFirestoreAdmin();
 
 async function getUserRole(uid: string): Promise<UserRole> {
   const adminDoc = await firestore.collection('roles_admin').doc(uid).get();
@@ -20,8 +21,7 @@ async function getOrCreateSpecialUser(auth: Auth, email: string, role: 'admin' |
         const userRecord = await auth.getUserByEmail(email);
         const userRole = await getUserRole(userRecord.uid);
         if (userRole !== role) {
-            // This case shouldn't happen with the new login logic, but it's good practice
-            throw new Error(`User exists but has wrong role.`);
+             throw new Error(`User exists but has wrong role.`);
         }
         return { uid: userRecord.uid, role: userRole };
     } catch (error: any) {
@@ -67,7 +67,6 @@ export async function login(formData: FormData) {
     const adminEmail = process.env.ADMIN_EMAIL;
     const employeeEmail = process.env.EMPLOYEE_EMAIL;
 
-    // Special handling for admin and employee
     if (email === adminEmail || email === employeeEmail) {
       const is_admin = email === adminEmail;
       const role_password = is_admin ? process.env.ADMIN_PASSWORD : process.env.EMPLOYEE_PASSWORD;
@@ -81,28 +80,27 @@ export async function login(formData: FormData) {
       uid = specialUser.uid;
       role = specialUser.role;
     } else {
-      // Standard customer login
+      // For standard customers, we can't verify password with Admin SDK.
+      // This is a known limitation. In a real app, you'd sign in on client,
+      // get an ID token, and send THAT to the server to create a session.
+      // For this project, we'll find the user and assume password is correct if they exist.
+      let userRecord: UserRecord;
       try {
-        const userRecord = await auth.getUserByEmail(email);
-        // This is a placeholder for password check. Admin SDK cannot verify password directly.
-        // For a production app, this check must happen on the client with signInWithEmailAndPassword,
-        // which would then send an ID token to a server endpoint to create a session.
-        // For this project's scope, we assume if the user exists, the login is "successful" for session creation.
-        uid = userRecord.uid;
-        role = await getUserRole(uid);
-        if (role !== 'customer') {
-            redirect('/?error=Access denied for this user type.');
-            return;
-        }
+        userRecord = await auth.getUserByEmail(email);
       } catch (error: any) {
-         if (error.code === 'auth/user-not-found') {
+        if (error.code === 'auth/user-not-found') {
             redirect('/?error=User not found. Please register.');
             return;
-         }
-         // Redirect for other auth errors, like wrong password if we could check it.
-         // For now, we generalize this for simplicity.
-         redirect('/?error=Invalid credentials');
-         return;
+        }
+        throw error; // Rethrow other errors
+      }
+      
+      uid = userRecord.uid;
+      role = await getUserRole(uid);
+
+      if (role !== 'customer') {
+          redirect('/?error=Access for this account type is not permitted here.');
+          return;
       }
     }
 
@@ -123,12 +121,9 @@ export async function login(formData: FormData) {
     }
   } catch (error: any) {
     console.error('Login process failed:', error);
-    let errorMessage = "An unexpected error occurred.";
-    if (error.code === 'auth/invalid-credential') {
-        errorMessage = "Invalid credentials provided.";
-    } else if (error.message.includes('refresh access token')) {
-        errorMessage = "Server authentication error. Please check backend configuration.";
-    }
+    const errorMessage = error.message.includes('Server configuration error')
+      ? "Server authentication error. Please check backend configuration."
+      : "Invalid credentials";
     redirect(`/?error=${encodeURIComponent(errorMessage)}`);
   }
 }
@@ -148,7 +143,6 @@ export async function register(formData: FormData) {
         return;
     }
     
-    // Prevent registration of special emails
     if (email === process.env.ADMIN_EMAIL || email === process.env.EMPLOYEE_EMAIL) {
         redirect('/register?error=This email address is reserved.');
         return;
@@ -161,7 +155,6 @@ export async function register(formData: FormData) {
             password
         });
         
-        // Explicitly set role to customer
         const newUser: Omit<User, 'id'> = {
             name,
             email,

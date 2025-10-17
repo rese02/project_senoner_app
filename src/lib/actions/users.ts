@@ -1,11 +1,11 @@
 'use server';
 
-import { verifySession } from '@/lib/auth';
+import { verifySession, getFirestoreAdmin, getFirebaseAuth } from '@/lib/auth';
 import { User } from '../types';
 import { revalidatePath } from 'next/cache';
-import { firestore } from '@/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getFirebaseAuth } from '../auth';
+
+const firestore = getFirestoreAdmin();
 
 export async function updateUserProfile(
   prevState: { message: string },
