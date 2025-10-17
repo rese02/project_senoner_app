@@ -12,7 +12,7 @@ export function getFirebaseAuth() {
 }
 
 export function getAnonymousUser() {
-    return getFirebaseAuth().createUser({});
+    return adminAuth.createUser({});
 }
 
 const secret = process.env.SESSION_SECRET;
@@ -44,7 +44,8 @@ export async function decrypt(session: string | undefined = '') {
 export async function createSession(userId: string, role: UserRole) {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
   const session = await encrypt({ userId, role, expiresAt });
-
+  
+  // Set the session cookie with the role
   cookies().set('session', session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -52,6 +53,15 @@ export async function createSession(userId: string, role: UserRole) {
     sameSite: 'lax',
     path: '/',
   });
+
+  // Set a custom claim on the Firebase user for client-side role checks
+  try {
+    await adminAuth.setCustomUserClaims(userId, { role });
+  } catch (error) {
+    console.error("Error setting custom user claims:", error);
+    // Handle error appropriately, maybe by deleting the session
+    throw new Error("Could not set user role for the session.");
+  }
 }
 
 export async function verifySession() {
@@ -72,6 +82,18 @@ export async function verifySession() {
 }
 
 export async function deleteSession() {
+  const sessionCookie = cookies().get('session')?.value;
+  const session = await decrypt(sessionCookie);
+  
+  if (session?.userId) {
+    // Revoke the refresh tokens to force re-login on all devices
+    try {
+        await adminAuth.revokeRefreshTokens(session.userId);
+    } catch(e) {
+        console.error("Error revoking refresh tokens:", e);
+    }
+  }
+  
   cookies().delete('session');
 }
 

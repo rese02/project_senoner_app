@@ -20,6 +20,7 @@ async function getOrCreateSpecialUser(auth: Auth, email: string, role: 'admin' |
         const userRecord = await auth.getUserByEmail(email);
         const userRole = await getUserRole(userRecord.uid);
         if (userRole !== role) {
+            // This case shouldn't happen with the new login logic, but it's good practice
             throw new Error(`User exists but has wrong role.`);
         }
         return { uid: userRecord.uid, role: userRole };
@@ -27,9 +28,11 @@ async function getOrCreateSpecialUser(auth: Auth, email: string, role: 'admin' |
         if (error.code === 'auth/user-not-found') {
             console.log(`Creating new ${role} user for ${email}`);
             const name = role.charAt(0).toUpperCase() + role.slice(1);
+            const password = role === 'admin' ? process.env.ADMIN_PASSWORD : process.env.EMPLOYEE_PASSWORD;
+            
             const newUserRecord = await auth.createUser({
                 email,
-                password: 'password', // Standard password
+                password,
                 displayName: name,
             });
 
@@ -61,31 +64,30 @@ export async function login(formData: FormData) {
     let uid: string;
     let role: UserRole;
 
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const employeeEmail = process.env.EMPLOYEE_EMAIL;
+
     // Special handling for admin and employee
-    if (email === 'admin@example.com' || email === 'employee@example.com') {
-      if (password !== 'password') {
+    if (email === adminEmail || email === employeeEmail) {
+      const is_admin = email === adminEmail;
+      const role_password = is_admin ? process.env.ADMIN_PASSWORD : process.env.EMPLOYEE_PASSWORD;
+      
+      if (password !== role_password) {
         redirect('/?error=Invalid credentials');
         return;
       }
-      const determinedRole = email === 'admin@example.com' ? 'admin' : 'employee';
+      const determinedRole = is_admin ? 'admin' : 'employee';
       const specialUser = await getOrCreateSpecialUser(auth, email, determinedRole);
       uid = specialUser.uid;
       role = specialUser.role;
     } else {
       // Standard customer login
-      // This will fail if the user doesn't exist, which is what we want.
-      // signInWithEmailAndPassword is a client-side SDK function. 
-      // The server-side equivalent is to verify a token, but for login forms,
-      // we just try to get the user, and if successful, we create a session.
-      // Since we don't have the password verification logic on admin SDK without custom tokens,
-      // this part becomes tricky. For simplicity, we'll let it fail and guide to register.
-      // A full implementation would use custom tokens or a client-side verification before calling a server action.
       try {
         const userRecord = await auth.getUserByEmail(email);
-        // This doesn't actually check the password. Firebase Admin SDK can't.
-        // This is a limitation. A proper implementation uses client-side signInWith... and sends token to server.
-        // For now, we will assume if user exists, login is "successful" for session creation.
-        // The "Invalid credentials" error from before was because user didn't exist.
+        // This is a placeholder for password check. Admin SDK cannot verify password directly.
+        // For a production app, this check must happen on the client with signInWithEmailAndPassword,
+        // which would then send an ID token to a server endpoint to create a session.
+        // For this project's scope, we assume if the user exists, the login is "successful" for session creation.
         uid = userRecord.uid;
         role = await getUserRole(uid);
         if (role !== 'customer') {
@@ -97,7 +99,10 @@ export async function login(formData: FormData) {
             redirect('/?error=User not found. Please register.');
             return;
          }
-         throw error;
+         // Redirect for other auth errors, like wrong password if we could check it.
+         // For now, we generalize this for simplicity.
+         redirect('/?error=Invalid credentials');
+         return;
       }
     }
 
@@ -106,16 +111,19 @@ export async function login(formData: FormData) {
     switch (role) {
       case 'admin':
         redirect('/admin');
+        break;
       case 'employee':
         redirect('/scanner');
+        break;
       case 'customer':
         redirect('/dashboard');
+        break;
       default:
         redirect('/dashboard');
     }
   } catch (error: any) {
     console.error('Login process failed:', error);
-    redirect(`/?error=Invalid credentials`);
+    redirect(`/?error=An unexpected error occurred.`);
   }
 }
 
@@ -135,7 +143,7 @@ export async function register(formData: FormData) {
     }
     
     // Prevent registration of special emails
-    if (email === 'admin@example.com' || email === 'employee@example.com') {
+    if (email === process.env.ADMIN_EMAIL || email === process.env.EMPLOYEE_EMAIL) {
         redirect('/register?error=This email address is reserved.');
         return;
     }
