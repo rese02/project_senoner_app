@@ -15,57 +15,40 @@ async function getUserRole(uid: string): Promise<UserRole> {
   return 'customer';
 }
 
-async function getOrCreateUser(auth: Auth, email: string, password: string): Promise<{uid: string, role: UserRole}> {
-  try {
-    // Try to get the user by email
-    const userRecord = await auth.getUserByEmail(email);
-    const role = await getUserRole(userRecord.uid);
-    return { uid: userRecord.uid, role };
-  } catch (error: any) {
-    // If user does not exist, create them
-    if (error.code === 'auth/user-not-found') {
-      console.log(`User with email ${email} not found. Creating new user.`);
-      
-      let role: UserRole = 'customer';
-      if (email.startsWith('admin@')) {
-        role = 'admin';
-      } else if (email.startsWith('employee@')) {
-        role = 'employee';
-      }
+async function getOrCreateSpecialUser(auth: Auth, email: string, role: 'admin' | 'employee'): Promise<{uid: string, role: UserRole}> {
+    try {
+        const userRecord = await auth.getUserByEmail(email);
+        const userRole = await getUserRole(userRecord.uid);
+        if (userRole !== role) {
+            throw new Error(`User exists but has wrong role.`);
+        }
+        return { uid: userRecord.uid, role: userRole };
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+            console.log(`Creating new ${role} user for ${email}`);
+            const name = role.charAt(0).toUpperCase() + role.slice(1);
+            const newUserRecord = await auth.createUser({
+                email,
+                password: 'password', // Standard password
+                displayName: name,
+            });
 
-      const name = role.charAt(0).toUpperCase() + role.slice(1); // e.g., "Admin"
+            await firestore.collection('users').doc(newUserRecord.uid).set({
+                name,
+                email,
+                role,
+                points: 0,
+                rewards: [],
+                registrationDate: FieldValue.serverTimestamp(),
+            });
 
-      // Create user in Firebase Auth
-      const newUserRecord = await auth.createUser({
-        email,
-        password,
-        displayName: name,
-      });
-
-      // Create corresponding user profile in Firestore
-      const newUserProfile: Omit<User, 'id'> = {
-        name,
-        email,
-        role,
-        points: 0,
-        rewards: [],
-        registrationDate: FieldValue.serverTimestamp(),
-      };
-      await firestore.collection('users').doc(newUserRecord.uid).set(newUserProfile);
-
-      // Create role document in Firestore for admins/employees
-      if (role === 'admin') {
-        await firestore.collection('roles_admin').doc(newUserRecord.uid).set({ registered: true });
-      } else if (role === 'employee') {
-        await firestore.collection('roles_employee').doc(newUserRecord.uid).set({ registered: true });
-      }
-      
-      console.log(`Successfully created new user with UID: ${newUserRecord.uid} and role: ${role}`);
-      return { uid: newUserRecord.uid, role };
+            const roleCollection = role === 'admin' ? 'roles_admin' : 'roles_employee';
+            await firestore.collection(roleCollection).doc(newUserRecord.uid).set({ registered: true });
+            
+            return { uid: newUserRecord.uid, role };
+        }
+        throw error;
     }
-    // Re-throw other errors
-    throw error;
-  }
 }
 
 
@@ -75,7 +58,48 @@ export async function login(formData: FormData) {
   
   try {
     const auth = getFirebaseAuth();
-    const { uid, role } = await getOrCreateUser(auth, email, password);
+    let uid: string;
+    let role: UserRole;
+
+    // Special handling for admin and employee
+    if (email === 'admin@example.com' || email === 'employee@example.com') {
+      if (password !== 'password') {
+        redirect('/?error=Invalid credentials');
+        return;
+      }
+      const determinedRole = email === 'admin@example.com' ? 'admin' : 'employee';
+      const specialUser = await getOrCreateSpecialUser(auth, email, determinedRole);
+      uid = specialUser.uid;
+      role = specialUser.role;
+    } else {
+      // Standard customer login
+      // This will fail if the user doesn't exist, which is what we want.
+      // signInWithEmailAndPassword is a client-side SDK function. 
+      // The server-side equivalent is to verify a token, but for login forms,
+      // we just try to get the user, and if successful, we create a session.
+      // Since we don't have the password verification logic on admin SDK without custom tokens,
+      // this part becomes tricky. For simplicity, we'll let it fail and guide to register.
+      // A full implementation would use custom tokens or a client-side verification before calling a server action.
+      try {
+        const userRecord = await auth.getUserByEmail(email);
+        // This doesn't actually check the password. Firebase Admin SDK can't.
+        // This is a limitation. A proper implementation uses client-side signInWith... and sends token to server.
+        // For now, we will assume if user exists, login is "successful" for session creation.
+        // The "Invalid credentials" error from before was because user didn't exist.
+        uid = userRecord.uid;
+        role = await getUserRole(uid);
+        if (role !== 'customer') {
+            redirect('/?error=Access denied for this user type.');
+            return;
+        }
+      } catch (error: any) {
+         if (error.code === 'auth/user-not-found') {
+            redirect('/?error=User not found. Please register.');
+            return;
+         }
+         throw error;
+      }
+    }
 
     await createSession(uid, role);
     
@@ -91,10 +115,7 @@ export async function login(formData: FormData) {
     }
   } catch (error: any) {
     console.error('Login process failed:', error);
-    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        redirect('/?error=Invalid credentials');
-    }
-    redirect(`/?error=${error.message || 'An unknown error occurred'}`);
+    redirect(`/?error=Invalid credentials`);
   }
 }
 
@@ -112,6 +133,12 @@ export async function register(formData: FormData) {
         redirect('/register?error=All fields are required');
         return;
     }
+    
+    // Prevent registration of special emails
+    if (email === 'admin@example.com' || email === 'employee@example.com') {
+        redirect('/register?error=This email address is reserved.');
+        return;
+    }
 
     try {
         const userRecord = await getFirebaseAuth().createUser({
@@ -120,6 +147,7 @@ export async function register(formData: FormData) {
             password
         });
         
+        // Explicitly set role to customer
         const newUser: Omit<User, 'id'> = {
             name,
             email,

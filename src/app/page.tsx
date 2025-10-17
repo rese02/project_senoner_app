@@ -62,9 +62,8 @@ export default function LoginPage() {
                   type="email"
                   placeholder="m@example.com"
                   required
-                  defaultValue="customer@example.com"
                 />
-                <p className="text-xs text-muted-foreground">Hint: use customer@, admin@, or employee@example.com</p>
+                <p className="text-xs text-muted-foreground">Hint: Use `admin@example.com` or `employee@example.com` with password `password`.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -73,7 +72,6 @@ export default function LoginPage() {
                   name="password" 
                   type="password" 
                   required 
-                  defaultValue="password"
                 />
               </div>
               <LoginButton />
@@ -83,7 +81,7 @@ export default function LoginPage() {
             <div className="text-center text-sm">
               Don't have an account?{' '}
               <Link href="/register" className="font-semibold text-primary underline-offset-4 hover:underline">
-                Register
+                Register here
               </Link>
             </div>
           </CardFooter>
