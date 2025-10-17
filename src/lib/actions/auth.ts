@@ -123,7 +123,13 @@ export async function login(formData: FormData) {
     }
   } catch (error: any) {
     console.error('Login process failed:', error);
-    redirect(`/?error=An unexpected error occurred.`);
+    let errorMessage = "An unexpected error occurred.";
+    if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid credentials provided.";
+    } else if (error.message.includes('refresh access token')) {
+        errorMessage = "Server authentication error. Please check backend configuration.";
+    }
+    redirect(`/?error=${encodeURIComponent(errorMessage)}`);
   }
 }
 

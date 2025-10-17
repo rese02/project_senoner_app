@@ -63,7 +63,6 @@ export default function LoginPage() {
                   placeholder="m@example.com"
                   required
                 />
-                <p className="text-xs text-muted-foreground">Hint: Use `admin@example.com` or `employee@example.com` with password `password`.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
